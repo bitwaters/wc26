@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { PublicUserSettings } from '../types';
 import { apiFetch } from '../lib/apiClient';
-import { Sliders, Save, Trash2, Cpu, Eye, EyeOff, AlertTriangle, CheckCircle2, KeyRound } from 'lucide-react';
+import { Save, Trash2, Cpu, Eye, EyeOff, AlertTriangle, CheckCircle2, KeyRound } from 'lucide-react';
 
 interface SettingsClientProps {
   initialSettings: PublicUserSettings;
