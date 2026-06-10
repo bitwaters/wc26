@@ -1,0 +1,16 @@
+node_modules
+.next
+data
+.git
+.gitignore
+
+# env 文件不打入镜像（通过 docker-compose env_file 挂载）
+.env*
+
+# 开发/文档
+*.md
+openspec
+.claude
+
+# macOS
+.DS_Store

@@ -1,0 +1,37 @@
+# ── 依赖 ──────────────────────────────
+/node_modules
+/.pnp
+.pnp.*
+
+# ── 运行时数据（注单 / 设置 / 密钥）──
+/data/*
+!/data/.gitkeep
+
+# ── Next.js 构建产物 ──────────────────
+/.next/
+/out/
+/build
+
+# ── 环境变量（含密钥，绝不提交）───────
+.env*
+!.env.example
+
+# ── 开发工具（仅本地使用）────────────
+.claude/
+openspec/
+CLAUDE.md
+AGENTS.md
+
+# ── 系统 / 编辑器 ─────────────────────
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# ── 调试日志 ──────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── 部署平台 ──────────────────────────
+.vercel

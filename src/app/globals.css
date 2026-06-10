@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --secondary-bg: #f5f5f7;
+  --secondary-fg: #86868b;
+  --accent: #0071e3;
+  --success: #34c759;
+  --danger: #ff3b30;
+  --border: #d2d2d7;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-border: rgba(210, 210, 215, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000000;
+    --foreground: #f5f5f7;
+    --secondary-bg: #1c1c1e;
+    --secondary-fg: #86868b;
+    --accent: #2997ff;
+    --success: #30d158;
+    --danger: #ff453a;
+    --border: #424245;
+    --card-bg: rgba(28, 28, 30, 0.8);
+    --card-border: rgba(66, 66, 69, 0.3);
+  }
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-apple-bg: var(--background);
+  --color-apple-fg: var(--foreground);
+  --color-apple-secondary-bg: var(--secondary-bg);
+  --color-apple-secondary-fg: var(--secondary-fg);
+  --color-apple-accent: var(--accent);
+  --color-apple-success: var(--success);
+  --color-apple-danger: var(--danger);
+  --color-apple-border: var(--border);
+  --color-apple-card-bg: var(--card-bg);
+  --color-apple-card-border: var(--card-border);
+  
+  --radius-apple-sm: 8px;
+  --radius-apple-md: 12px;
+  --radius-apple-lg: 16px;
+  --radius-apple-xl: 20px;
+  --radius-apple-2xl: 24px;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide Next.js dev mode indicator */
+#next-logo,
+nextjs-portal {
+  display: none !important;
+}
+
