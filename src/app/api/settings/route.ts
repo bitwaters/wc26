@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { readSettings, writeSettings, maskApiKey } from '@/lib/storage';
 import { requireApiAuth } from '@/lib/apiAuth';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authError = requireApiAuth(request);
+  if (authError) return authError;
+
   try {
     const settings = readSettings();
     return NextResponse.json({
