@@ -191,7 +191,7 @@ export default function PlayerManager({ initialPlayers }: PlayerManagerProps) {
       <div className="border border-apple-border/20 rounded-apple-lg p-4 space-y-3 bg-apple-secondary-bg/20">
         <div className="text-xs font-bold text-apple-secondary-fg uppercase tracking-wide">添加投注人</div>
 
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             placeholder="姓名（如：小王）"
@@ -199,14 +199,16 @@ export default function PlayerManager({ initialPlayers }: PlayerManagerProps) {
             onChange={e => setNewName(e.target.value)}
             className="flex-1 bg-apple-secondary-bg border border-apple-border/20 rounded-apple-md px-3 py-2 text-sm text-apple-fg focus:outline-none focus:ring-1 focus:ring-apple-accent/50"
           />
-          <CurrencyToggle value={newCurrency} onChange={setNewCurrency} />
-          <input
-            type="number"
-            placeholder="预存金额"
-            value={newDeposit}
-            onChange={e => setNewDeposit(e.target.value)}
-            className="w-24 bg-apple-secondary-bg border border-apple-border/20 rounded-apple-md px-3 py-2 text-sm text-apple-fg focus:outline-none"
-          />
+          <div className="flex gap-2">
+            <CurrencyToggle value={newCurrency} onChange={setNewCurrency} />
+            <input
+              type="number"
+              placeholder="预存金额"
+              value={newDeposit}
+              onChange={e => setNewDeposit(e.target.value)}
+              className="flex-1 sm:w-28 bg-apple-secondary-bg border border-apple-border/20 rounded-apple-md px-3 py-2 text-sm text-apple-fg focus:outline-none"
+            />
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">

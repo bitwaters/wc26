@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Match, Bet, Player } from '../types';
+import { Match, Bet, Player, DepositCurrency } from '../types';
 import Flag from './Flag';
 import BetDrawer from './BetDrawer';
 import { teamZhName } from '../lib/teamNames';
@@ -149,6 +149,7 @@ export default function QuickBetEntry({ initialMatches, initialBets, initialPlay
         match={selectedMatch}
         bets={bets}
         bettorId={selectedBettorId}
+        defaultStakeCurrency={players.find(p => p.id === selectedBettorId)?.depositCurrency ?? 'CNY'}
         onClose={() => setSelectedMatch(null)}
         onBetSaved={handleBetSaved}
         onScoreSynced={handleScoreSynced}
@@ -157,11 +158,12 @@ export default function QuickBetEntry({ initialMatches, initialBets, initialPlay
   );
 }
 
-// Thin wrapper that passes bettorId into BetDrawer's save call
+// Thin wrapper that passes bettorId + currency into BetDrawer's save call
 function BetDrawerWithBettor({
   match,
   bets,
   bettorId,
+  defaultStakeCurrency,
   onClose,
   onBetSaved,
   onScoreSynced
@@ -169,6 +171,7 @@ function BetDrawerWithBettor({
   match: Match | null;
   bets: Bet[];
   bettorId: string;
+  defaultStakeCurrency: DepositCurrency;
   onClose: () => void;
   onBetSaved: () => void;
   onScoreSynced: () => void;
@@ -180,6 +183,7 @@ function BetDrawerWithBettor({
       match={match}
       bets={bets}
       bettorId={bettorId}
+      defaultStakeCurrency={defaultStakeCurrency}
       onBetSaved={onBetSaved}
       onScoreSynced={onScoreSynced}
     />

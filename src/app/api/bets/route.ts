@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { matchId, betType, betSelection, odds, stake, metadata, notes, bettorId } = body;
+    const { matchId, betType, betSelection, odds, stake, stakeCurrency, metadata, notes, bettorId } = body;
 
     if (!matchId || !betType || !betSelection || odds === undefined || odds === null || stake === undefined || stake === null) {
       return NextResponse.json({ error: 'Missing required betting parameters.' }, { status: 400 });
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       betSelection,
       odds: parsedOdds,
       stake: parsedStake,
+      stakeCurrency: stakeCurrency === 'USDT' ? 'USDT' : 'CNY',
       status: initialStatus,
       createdAt: new Date().toISOString(),
       bettorId: bettorId || 'self',

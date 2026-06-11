@@ -12,6 +12,14 @@ const LOCK_DIR = path.join(DATA_DIR, '.locks');
 
 const STATIC_SCHEDULE_PATH = path.join(process.cwd(), 'src/data/worldcup2026.json');
 
+// 内存缓存：matches 数据庞大（26KB），每次导航都从磁盘重新解析代价较高。
+// 写入时主动失效，读取时命中缓存直接返回，避免重复 I/O。
+let matchesCache: { data: Match[]; mtime: number } | null = null;
+
+function invalidateMatchesCache() {
+  matchesCache = null;
+}
+
 function acquireLock(name: string): void {
   if (!fs.existsSync(LOCK_DIR)) {
     fs.mkdirSync(LOCK_DIR, { recursive: true });
@@ -163,8 +171,14 @@ export function writePredictions(predictions: Predictions): void {
 export function readMatches(): Match[] {
   ensureDataDir();
   try {
+    const mtime = fs.statSync(MATCHES_PATH).mtimeMs;
+    if (matchesCache && matchesCache.mtime === mtime) {
+      return matchesCache.data;
+    }
     const data = fs.readFileSync(MATCHES_PATH, 'utf-8');
-    return JSON.parse(data);
+    const parsed: Match[] = JSON.parse(data);
+    matchesCache = { data: parsed, mtime };
+    return parsed;
   } catch (e) {
     console.error('Failed to read matches.json:', e);
     return [];
@@ -175,6 +189,7 @@ export function writeMatches(matches: Match[]): void {
   withDataLock('matches', () => {
     ensureDataDir();
     atomicWriteJson(MATCHES_PATH, matches);
+    invalidateMatchesCache();
   });
 }
 

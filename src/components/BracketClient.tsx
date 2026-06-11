@@ -30,7 +30,7 @@ export default function BracketClient({
   const [track, setTrack] = useState<'sandbox' | 'live'>('sandbox');
   const [predictions, setPredictions] = useState<Predictions>(initialPredictions);
   const [matches] = useState<Match[]>(initialMatches);
-  const [bets] = useState<Bet[]>(initialBets);
+  const [bets, setBets] = useState<Bet[]>(initialBets);
   const [activeMobileTab, setActiveMobileTab] = useState<string>('r32');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -38,7 +38,19 @@ export default function BracketClient({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const reloadData = () => {
+  const reloadData = async () => {
+    try {
+      const res = await fetch('/api/bets');
+      if (res.ok) {
+        const data = await res.json();
+        setBets(data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const reloadAll = () => {
     window.location.reload();
   };
 
@@ -111,22 +123,7 @@ export default function BracketClient({
     setIsDrawerOpen(true);
   };
 
-  // Scroll mobile snap layout
-  const scrollToColumn = (roundId: string) => {
-    setActiveMobileTab(roundId);
-    const colElement = columnRefs.current[roundId];
-    const container = scrollContainerRef.current;
-    
-    if (colElement && container) {
-      const leftOffset = colElement.offsetLeft - container.offsetLeft - 16; // 16px padding
-      container.scrollTo({
-        left: leftOffset,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // Handle manual/drag scroll tracking
+  // Handle manual/drag scroll tracking (desktop only)
   const handleScroll = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -195,12 +192,12 @@ export default function BracketClient({
         </div>
       </div>
 
-      {/* Mobile/Tablet Round Tabs (Snap Navigation) */}
+      {/* Mobile Round Tabs */}
       <div className="flex lg:hidden overflow-x-auto pb-2 border-b border-apple-border/10 space-x-2 scrollbar-none z-10">
         {rounds.map(r => (
           <button
             key={r.id}
-            onClick={() => scrollToColumn(r.id)}
+            onClick={() => setActiveMobileTab(r.id)}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
               activeMobileTab === r.id
                 ? 'bg-apple-accent border-apple-accent text-white shadow-sm'
@@ -212,11 +209,38 @@ export default function BracketClient({
         ))}
       </div>
 
-      {/* Bracket Tree scroll container */}
-      <div 
+      {/* Mobile: 按轮次列表视图 */}
+      <div className="lg:hidden space-y-3">
+        {roundMatchesMap[activeMobileTab]?.map((match, idx) => {
+          const roundIdx = rounds.findIndex(r => r.id === activeMobileTab);
+          const isFinal = activeMobileTab === 'final';
+          return (
+            <div key={match.id}>
+              {isFinal && (
+                <div className="text-[10px] font-bold text-apple-accent tracking-wider uppercase mb-1 px-1">
+                  {idx === 0 ? 'World Cup Final' : 'Third Place Playoff'}
+                </div>
+              )}
+              <BracketMatchCard
+                match={match}
+                originalMatch={initialMatches[rounds[roundIdx].startIdx + idx]}
+                track={track}
+                predictions={predictions}
+                matches={matches}
+                bets={bets}
+                onSelectWinner={handleSelectWinner}
+                onOpenBetSlip={handleOpenBetSlip}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: 横向树状对阵图 */}
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="w-full overflow-x-auto select-none grab-scroll-container pb-10 space-x-8 scroll-smooth flex items-center snap-x snap-mandatory"
+        className="hidden lg:flex w-full overflow-x-auto select-none grab-scroll-container pb-10 space-x-8 scroll-smooth items-center snap-x snap-mandatory"
         style={{ scrollbarWidth: 'thin' }}
       >
         
@@ -360,8 +384,8 @@ export default function BracketClient({
 
       </div>
 
-      {/* Swipe Tip for Mobile Users */}
-      <div className="lg:hidden flex items-center justify-center space-x-2 text-apple-secondary-fg text-xs animate-pulse">
+      {/* Desktop swipe tip */}
+      <div className="hidden lg:flex items-center justify-center space-x-2 text-apple-secondary-fg text-xs animate-pulse">
         <Smartphone size={14} />
         <span>左右滑动以查看完整的淘汰赛对阵图</span>
       </div>
@@ -374,7 +398,7 @@ export default function BracketClient({
         match={selectedMatch}
         bets={bets}
         onBetSaved={reloadData}
-        onScoreSynced={reloadData}
+        onScoreSynced={reloadAll}
       />
 
     </div>

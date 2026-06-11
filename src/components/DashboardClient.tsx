@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Bet, Match, Player } from '../types';
 import PlayerChips from './PlayerChips';
 import { useBettorFilter } from './ClientProviders';
@@ -34,6 +34,16 @@ interface DashboardClientProps {
 export default function DashboardClient({ initialBets, initialMatches, initialPlayers = [] }: DashboardClientProps) {
   const { bettorId: filterBettorId, setBettorId: setFilterBettorId } = useBettorFilter();
   const [bettorSearch, setBettorSearch] = useState('');
+  const [bets, setBets] = useState<Bet[]>(initialBets);
+
+  // 每次组件挂载时拉取最新注单（应对从其他页面切换过来的情况）
+  useEffect(() => {
+    fetch('/api/bets')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setBets(data); })
+      .catch(() => {});
+  }, []);
+
   const filteredPlayers = useMemo(() =>
     initialPlayers.filter(p => p.name.toLowerCase().includes(bettorSearch.toLowerCase())),
     [initialPlayers, bettorSearch]
@@ -41,10 +51,10 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
 
   // Filter bets by bettor
   const filteredBets = useMemo(() => {
-    return initialBets.filter(b =>
+    return bets.filter(b =>
       filterBettorId === 'all' || (b.bettorId ?? 'self') === filterBettorId
     );
-  }, [initialBets, filterBettorId]);
+  }, [bets, filterBettorId]);
 
   // Map matches for easy lookup
   const matchMap = useMemo(() => {
@@ -53,30 +63,41 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
     return map;
   }, [initialMatches]);
 
-  // 1. Calculate Core Metrics
+  // 1. Calculate Core Metrics (CNY only for P&L; USDT tracked separately)
   const metrics = useMemo(() => {
+    // CNY metrics
     let totalStakes = 0;
+    let totalAllStakes = 0;
     let totalReturns = 0;
     let wonCount = 0;
     let lostCount = 0;
     let pendingCount = 0;
 
+    // USDT metrics (returns not tracked — different currency, can't combine with ¥ P&L)
+    let usdtTotalAllStakes = 0;
+    let usdtPendingCount = 0;
+
     filteredBets.forEach(bet => {
-      if (bet.status === 'pending') {
-        pendingCount++;
-        return; // pending bets don't count toward settled P&L
-      }
+      const isUsdt = (bet.stakeCurrency ?? 'CNY') === 'USDT';
 
-      totalStakes += bet.stake;
-
-      if (bet.status === 'won') {
-        wonCount++;
-        totalReturns += bet.stake * bet.odds;
-      } else if (bet.status === 'lost') {
-        lostCount++;
-      } else if (bet.status === 'void') {
-        // Refund stake
-        totalReturns += bet.stake;
+      if (isUsdt) {
+        usdtTotalAllStakes += bet.stake;
+        if (bet.status === 'pending') usdtPendingCount++;
+      } else {
+        totalAllStakes += bet.stake;
+        if (bet.status === 'pending') {
+          pendingCount++;
+          return;
+        }
+        totalStakes += bet.stake;
+        if (bet.status === 'won') {
+          wonCount++;
+          totalReturns += bet.stake * bet.odds;
+        } else if (bet.status === 'lost') {
+          lostCount++;
+        } else if (bet.status === 'void') {
+          totalReturns += bet.stake;
+        }
       }
     });
 
@@ -84,23 +105,19 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
     const roi = totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
     const totalSettled = wonCount + lostCount;
     const winRate = totalSettled > 0 ? (wonCount / totalSettled) * 100 : 0;
-
     return {
-      totalStakes,
-      totalReturns,
-      netProfit,
-      roi,
-      winRate,
-      pendingCount,
-      totalSettled
+      totalStakes, totalAllStakes, netProfit, roi,
+      winRate, pendingCount, totalSettled,
+      usdtTotalAllStakes, usdtPendingCount,
+      hasUsdt: usdtTotalAllStakes > 0
     };
   }, [filteredBets]);
 
-  // 2. Prepare Cumulative Profit Trend Data
+  // 2. Prepare Cumulative Profit Trend Data (CNY only — mixing currencies distorts the chart)
   const trendData = useMemo(() => {
-    // Sort settled bets chronologically
+    // Sort settled CNY bets chronologically
     const settledBets = filteredBets
-      .filter(b => b.status !== 'pending')
+      .filter(b => b.status !== 'pending' && (b.stakeCurrency ?? 'CNY') === 'CNY')
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     let runningProfit = 0;
@@ -190,7 +207,7 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
           <div className="flex-1 min-w-0">
             <PlayerChips
               players={filteredPlayers}
-              bets={initialBets}
+              bets={bets}
               selectedId={filterBettorId}
               onChange={setFilterBettorId}
             />
@@ -260,10 +277,17 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
             <Activity size={18} className="text-apple-secondary-fg" />
           </div>
           <div className="text-2xl sm:text-3xl font-bold tracking-tight text-apple-fg">
-            {`¥${metrics.totalStakes.toFixed(2)}`}
+            {`¥${metrics.totalAllStakes.toFixed(0)}`}
           </div>
+          {metrics.hasUsdt && (
+            <div className="text-base font-bold text-amber-600 mt-0.5">
+              {`${metrics.usdtTotalAllStakes.toFixed(0)} U`}
+            </div>
+          )}
           <p className="text-[11px] text-apple-secondary-fg mt-2">
-            {metrics.pendingCount} 笔注单当前待结算。
+            {metrics.pendingCount + metrics.usdtPendingCount > 0
+              ? `${metrics.pendingCount + metrics.usdtPendingCount} 笔待结算，`
+              : ''}{metrics.totalSettled} 笔已结算。
           </p>
         </div>
       </div>

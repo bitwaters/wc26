@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const players = readPlayers();
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="space-y-8 max-w-2xl lg:max-w-3xl">
 
       {/* 页面标题 */}
       <div>

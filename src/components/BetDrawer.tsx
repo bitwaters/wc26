@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Match, Bet, BetType } from '../types';
+import { Match, Bet, BetType, DepositCurrency } from '../types';
 import Flag from './Flag';
 import { apiFetch } from '../lib/apiClient';
-import { X, Cpu, Save, Trash2, Calendar, MapPin, Receipt, ShieldAlert, Sparkles } from 'lucide-react';
+import { X, Cpu, Save, Trash2, Calendar, MapPin, Receipt, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { teamZhName } from '../lib/teamNames';
 
 const KNOCKOUT_GROUPS = new Set([
@@ -28,6 +28,7 @@ interface BetDrawerProps {
   onBetSaved: () => void;
   onScoreSynced: () => void;
   bettorId?: string;
+  defaultStakeCurrency?: DepositCurrency;
 }
 
 export default function BetDrawer({
@@ -37,7 +38,8 @@ export default function BetDrawer({
   bets,
   onBetSaved,
   onScoreSynced,
-  bettorId = 'self'
+  bettorId = 'self',
+  defaultStakeCurrency = 'CNY'
 }: BetDrawerProps) {
   const [betType, setBetType] = useState<BetType>('1X2');
   const [betSelection, setBetSelection] = useState('');
@@ -64,6 +66,9 @@ export default function BetDrawer({
   const [syncSummary, setSyncSummary] = useState('');
   const [syncError, setSyncError] = useState('');
   const [isSavingBet, setIsSavingBet] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [stakeCurrency, setStakeCurrency] = useState<DepositCurrency>(defaultStakeCurrency);
 
   // Derived: no state needed, pure computation from match.date
   const isMatchInPast = match ? new Date(match.date).getTime() < Date.now() : false;
@@ -78,6 +83,16 @@ export default function BetDrawer({
       setSyncError('');
     }
   }, [match?.id]);
+
+  // Sync stake currency when defaultStakeCurrency changes (bettor switch)
+  useEffect(() => {
+    setStakeCurrency(defaultStakeCurrency);
+  }, [defaultStakeCurrency]);
+
+  // Cleanup save-success timer on unmount
+  useEffect(() => {
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, []);
 
   // Filter wagers for this match
   const matchBets = bets.filter(b => match && b.matchId === match.id);
@@ -191,6 +206,7 @@ export default function BetDrawer({
           betSelection: finalSelection,
           odds: Number(odds),
           stake: Number(stake),
+          stakeCurrency,
           metadata,
           notes,
           bettorId
@@ -206,6 +222,10 @@ export default function BetDrawer({
       setOdds('');
       setStake('');
       setNotes('');
+      setBetSelection('');
+      setSaveSuccess(true);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveSuccess(false), 2000);
       onBetSaved();
     } catch (e) {
       alert((e as Error).message);
@@ -589,13 +609,31 @@ export default function BetDrawer({
               </div>
               <div className="w-1/2">
                 <label className="block text-[10px] text-apple-secondary-fg font-semibold mb-1 uppercase">下注本金</label>
-                <input 
-                  type="number" 
-                  placeholder="例如 50"
-                  value={stake}
-                  onChange={e => setStake(e.target.value)}
-                  className="w-full bg-apple-secondary-bg border border-apple-border/20 rounded-apple-md p-2 text-xs text-apple-fg focus:outline-none font-semibold"
-                />
+                <div className="flex rounded-apple-md overflow-hidden border border-apple-border/20">
+                  <div className="flex flex-shrink-0">
+                    {(['CNY', 'USDT'] as DepositCurrency[]).map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setStakeCurrency(c)}
+                        className={`px-2 py-2 text-[10px] font-bold transition-all border-r border-apple-border/20 ${
+                          stakeCurrency === c
+                            ? 'bg-apple-accent text-white'
+                            : 'bg-apple-secondary-bg text-apple-secondary-fg hover:text-apple-fg'
+                        }`}
+                      >
+                        {c === 'CNY' ? '¥' : 'U'}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="50"
+                    value={stake}
+                    onChange={e => setStake(e.target.value)}
+                    className="flex-1 min-w-0 bg-apple-secondary-bg px-2 py-2 text-xs text-apple-fg focus:outline-none font-semibold"
+                  />
+                </div>
               </div>
             </div>
 
@@ -613,11 +651,24 @@ export default function BetDrawer({
 
             <button
               type="submit"
-              disabled={isSavingBet}
-              className="w-full flex items-center justify-center space-x-2 bg-apple-accent hover:bg-apple-accent/90 text-white font-semibold text-xs py-3 rounded-apple-md transition-all disabled:opacity-50"
+              disabled={isSavingBet || saveSuccess}
+              className={`w-full flex items-center justify-center space-x-2 font-semibold text-xs py-3 rounded-apple-md transition-all disabled:opacity-90 ${
+                saveSuccess
+                  ? 'bg-apple-success text-white'
+                  : 'bg-apple-accent hover:bg-apple-accent/90 text-white'
+              }`}
             >
-              <Save size={14} />
-              <span>{isSavingBet ? '记录中...' : '记录该笔下注'}</span>
+              {saveSuccess ? (
+                <>
+                  <CheckCircle2 size={14} />
+                  <span>已记录 ✓</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>{isSavingBet ? '记录中...' : '记录该笔下注'}</span>
+                </>
+              )}
             </button>
           </form>
 

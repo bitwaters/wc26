@@ -22,6 +22,7 @@ export interface Bet {
   betSelection: string; // e.g., "Germany", "+0.5", "Over 2.5", "2-1"
   odds: number;
   stake: number;
+  stakeCurrency?: DepositCurrency; // default: 'CNY'
   status: BetStatus;
   createdAt: string;
   bettorId?: string;  // undefined | null → "self"

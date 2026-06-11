@@ -87,7 +87,7 @@ export default function BracketMatchCard({
   const isTeamBConcrete = match.teamB && !match.teamB.includes('Winner') && !match.teamB.includes('Runner-up') && !match.teamB.includes('3rd') && !match.teamB.includes('Loser');
 
   return (
-    <div className={`relative bg-apple-card-bg border rounded-apple-lg p-3 w-[220px] shadow-sm flex flex-col group transition-all duration-300 ${borderClass}`}>
+    <div className={`relative bg-apple-card-bg border rounded-apple-lg p-3 w-full lg:w-[220px] shadow-sm flex flex-col group transition-all duration-300 ${borderClass}`}>
       
       {/* Small floating action buttons on card */}
       <div className="absolute right-2 top-2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
