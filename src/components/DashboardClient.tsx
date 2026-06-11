@@ -63,61 +63,64 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
     return map;
   }, [initialMatches]);
 
-  // 1. Calculate Core Metrics (CNY only for P&L; USDT tracked separately)
+  // 1. Calculate Core Metrics — per-currency P&L, cross-currency win/loss count
   const metrics = useMemo(() => {
-    // CNY metrics
+    // CNY
     let totalStakes = 0;
     let totalAllStakes = 0;
     let totalReturns = 0;
+    // USDT
+    let usdtTotalStakes = 0;
+    let usdtTotalAllStakes = 0;
+    let usdtTotalReturns = 0;
+    // Cross-currency
     let wonCount = 0;
     let lostCount = 0;
     let pendingCount = 0;
 
-    // USDT metrics (returns not tracked — different currency, can't combine with ¥ P&L)
-    let usdtTotalAllStakes = 0;
-    let usdtPendingCount = 0;
-
     filteredBets.forEach(bet => {
       const isUsdt = (bet.stakeCurrency ?? 'CNY') === 'USDT';
+      const settled = bet.status !== 'pending';
 
       if (isUsdt) {
         usdtTotalAllStakes += bet.stake;
-        if (bet.status === 'pending') usdtPendingCount++;
+        if (!settled) { pendingCount++; return; }
+        usdtTotalStakes += bet.stake;
+        if (bet.status === 'won') { wonCount++; usdtTotalReturns += bet.stake * bet.odds; }
+        else if (bet.status === 'lost') { lostCount++; }
+        else if (bet.status === 'void') { usdtTotalReturns += bet.stake; }
       } else {
         totalAllStakes += bet.stake;
-        if (bet.status === 'pending') {
-          pendingCount++;
-          return;
-        }
+        if (!settled) { pendingCount++; return; }
         totalStakes += bet.stake;
-        if (bet.status === 'won') {
-          wonCount++;
-          totalReturns += bet.stake * bet.odds;
-        } else if (bet.status === 'lost') {
-          lostCount++;
-        } else if (bet.status === 'void') {
-          totalReturns += bet.stake;
-        }
+        if (bet.status === 'won') { wonCount++; totalReturns += bet.stake * bet.odds; }
+        else if (bet.status === 'lost') { lostCount++; }
+        else if (bet.status === 'void') { totalReturns += bet.stake; }
       }
     });
 
     const netProfit = totalReturns - totalStakes;
-    const roi = totalStakes > 0 ? (netProfit / totalStakes) * 100 : 0;
+    const usdtNetProfit = usdtTotalReturns - usdtTotalStakes;
+    // ROI: 优先 CNY，无 CNY 则用 USDT
+    const roi = totalStakes > 0
+      ? (netProfit / totalStakes) * 100
+      : usdtTotalStakes > 0 ? (usdtNetProfit / usdtTotalStakes) * 100 : 0;
     const totalSettled = wonCount + lostCount;
     const winRate = totalSettled > 0 ? (wonCount / totalSettled) * 100 : 0;
     return {
-      totalStakes, totalAllStakes, netProfit, roi,
-      winRate, pendingCount, totalSettled,
-      usdtTotalAllStakes, usdtPendingCount,
-      hasUsdt: usdtTotalAllStakes > 0
+      totalStakes, totalAllStakes, netProfit,
+      usdtTotalStakes, usdtTotalAllStakes, usdtNetProfit,
+      roi, winRate, pendingCount, totalSettled,
+      hasUsdt: usdtTotalAllStakes > 0,
+      hasCny: totalAllStakes > 0,
     };
   }, [filteredBets]);
 
-  // 2. Prepare Cumulative Profit Trend Data (CNY only — mixing currencies distorts the chart)
+  // 2. Prepare Cumulative Profit Trend Data
+  // Use CNY bets when available; fall back to USDT when there are no CNY settled bets
   const trendData = useMemo(() => {
-    // Sort settled CNY bets chronologically
-    const settledBets = filteredBets
-      .filter(b => b.status !== 'pending' && (b.stakeCurrency ?? 'CNY') === 'CNY')
+    const cnySettled = filteredBets.filter(b => b.status !== 'pending' && (b.stakeCurrency ?? 'CNY') === 'CNY');
+    const settledBets = (cnySettled.length > 0 ? cnySettled : filteredBets.filter(b => b.status !== 'pending'))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     let runningProfit = 0;
@@ -222,18 +225,29 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
         <div className="bg-apple-card-bg border border-apple-card-border rounded-apple-xl p-5 sm:p-6 backdrop-blur-md shadow-sm">
           <div className="flex items-center justify-between text-apple-secondary-fg mb-3">
             <span className="text-xs font-semibold tracking-wide uppercase">净利润</span>
-            {metrics.netProfit >= 0 ? (
+            {(metrics.hasCny ? metrics.netProfit : metrics.usdtNetProfit) >= 0 ? (
               <TrendingUp size={18} className="text-apple-success" />
             ) : (
               <TrendingDown size={18} className="text-apple-danger" />
             )}
           </div>
-          <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${
-            metrics.netProfit >= 0 ? 'text-apple-success' : 'text-apple-danger'
-          }`}>
-            {metrics.netProfit >= 0 ? '+' : ''}
-            {`¥${metrics.netProfit.toFixed(2)}`}
-          </div>
+          {metrics.hasCny && (
+            <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${
+              metrics.netProfit >= 0 ? 'text-apple-success' : 'text-apple-danger'
+            }`}>
+              {metrics.netProfit >= 0 ? '+' : ''}¥{metrics.netProfit.toFixed(2)}
+            </div>
+          )}
+          {metrics.hasUsdt && (
+            <div className={`font-bold tracking-tight ${
+              metrics.hasCny ? 'text-base mt-0.5' : 'text-2xl sm:text-3xl'
+            } ${metrics.usdtNetProfit >= 0 ? 'text-apple-success' : 'text-apple-danger'}`}>
+              {metrics.usdtNetProfit >= 0 ? '+' : ''}{metrics.usdtNetProfit.toFixed(2)} U
+            </div>
+          )}
+          {!metrics.hasCny && !metrics.hasUsdt && (
+            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-apple-success">+¥0.00</div>
+          )}
           <p className="text-[11px] text-apple-secondary-fg mt-2">
             来自 {metrics.totalSettled} 笔已结算注单。
           </p>
@@ -285,8 +299,8 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
             </div>
           )}
           <p className="text-[11px] text-apple-secondary-fg mt-2">
-            {metrics.pendingCount + metrics.usdtPendingCount > 0
-              ? `${metrics.pendingCount + metrics.usdtPendingCount} 笔待结算，`
+            {metrics.pendingCount > 0
+              ? `${metrics.pendingCount} 笔待结算，`
               : ''}{metrics.totalSettled} 笔已结算。
           </p>
         </div>
@@ -391,7 +405,7 @@ export default function DashboardClient({ initialBets, initialMatches, initialPl
                       fontFamily: 'inherit'
                     }}
                     formatter={(value) => [
-                      `¥${Number(value || 0).toFixed(2)}`,
+                      `${metrics.hasCny ? '¥' : ''}${Number(value || 0).toFixed(2)}${!metrics.hasCny && metrics.hasUsdt ? ' U' : ''}`,
                       '利润'
                     ]}
                   />

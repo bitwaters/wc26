@@ -27,14 +27,16 @@ export default function QuickBetEntry({ initialMatches, initialBets, initialPlay
 
   const filteredMatches = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return initialMatches;
-    return initialMatches.filter(m =>
-      m.teamA.toLowerCase().includes(q) ||
-      m.teamB.toLowerCase().includes(q) ||
-      teamZhName(m.teamA).includes(q) ||
-      teamZhName(m.teamB).includes(q) ||
-      m.group.toLowerCase().includes(q)
-    );
+    const base = q
+      ? initialMatches.filter(m =>
+          m.teamA.toLowerCase().includes(q) ||
+          m.teamB.toLowerCase().includes(q) ||
+          teamZhName(m.teamA).includes(q) ||
+          teamZhName(m.teamB).includes(q) ||
+          m.group.toLowerCase().includes(q)
+        )
+      : initialMatches;
+    return [...base].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [initialMatches, search]);
 
   const handleBetSaved = async () => {

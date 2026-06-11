@@ -64,6 +64,69 @@ function atomicWriteJson(filePath: string, data: unknown): void {
   fs.renameSync(tmpPath, filePath);
 }
 
+/**
+ * Merges the static worldcup2026.json schedule into the runtime matches.json.
+ *
+ * Rules:
+ *  - Match still scheduled (no scores): overwrite team names, date, stadium, group from static.
+ *  - Match already has scores (finished/in-progress): keep runtime data untouched.
+ *  - Match in static but missing from runtime: append it.
+ *
+ * This runs on every startup so that deploying updated schedule data (e.g. fixing
+ * team names, correcting dates) takes effect automatically on the demo server without
+ * needing to delete the persisted matches.json.
+ */
+function syncStaticSchedule(): void {
+  if (!fs.existsSync(STATIC_SCHEDULE_PATH)) return;
+  try {
+    const rawStatic = fs.readFileSync(STATIC_SCHEDULE_PATH, 'utf-8');
+    const staticMatches: Match[] = JSON.parse(rawStatic).matches;
+
+    const rawRuntime = fs.readFileSync(MATCHES_PATH, 'utf-8');
+    const runtimeMatches: Match[] = JSON.parse(rawRuntime);
+
+    const runtimeMap = new Map<string, Match>(runtimeMatches.map(m => [m.id, m]));
+    let changed = false;
+
+    for (const staticMatch of staticMatches) {
+      const runtime = runtimeMap.get(staticMatch.id);
+      if (!runtime) {
+        // New match not yet in runtime — add it
+        runtimeMatches.push(staticMatch);
+        runtimeMap.set(staticMatch.id, staticMatch);
+        changed = true;
+      } else if (runtime.scoreA === null && runtime.scoreB === null) {
+        // Not yet played — safe to update schedule metadata
+        const needsUpdate =
+          runtime.teamA !== staticMatch.teamA ||
+          runtime.teamB !== staticMatch.teamB ||
+          runtime.group !== staticMatch.group ||
+          runtime.date !== staticMatch.date ||
+          runtime.stadium !== staticMatch.stadium;
+        if (needsUpdate) {
+          Object.assign(runtime, {
+            teamA: staticMatch.teamA,
+            teamB: staticMatch.teamB,
+            group: staticMatch.group,
+            date: staticMatch.date,
+            stadium: staticMatch.stadium,
+          });
+          changed = true;
+        }
+      }
+      // else: match has scores — leave runtime data as-is
+    }
+
+    if (changed) {
+      atomicWriteJson(MATCHES_PATH, runtimeMatches);
+      invalidateMatchesCache();
+      console.log('[storage] Synced static schedule into matches.json');
+    }
+  } catch (e) {
+    console.error('[storage] Failed to sync static schedule:', e);
+  }
+}
+
 export function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -96,6 +159,7 @@ export function ensureDataDir() {
   }
 
   if (!fs.existsSync(MATCHES_PATH)) {
+    // First run — seed from static schedule
     try {
       if (fs.existsSync(STATIC_SCHEDULE_PATH)) {
         const rawStatic = fs.readFileSync(STATIC_SCHEDULE_PATH, 'utf-8');
@@ -108,6 +172,9 @@ export function ensureDataDir() {
       console.error('Failed to copy static schedule to matches.json:', e);
       atomicWriteJson(MATCHES_PATH, []);
     }
+  } else {
+    // Subsequent runs — merge any schedule updates from static file
+    syncStaticSchedule();
   }
 }
 
