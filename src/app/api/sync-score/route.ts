@@ -5,6 +5,7 @@ import { callLLMToSyncScore } from '@/lib/llm';
 import { settleAllBets } from '@/lib/settler';
 import { requireApiAuth } from '@/lib/apiAuth';
 import { validateScoreSyncResult, toValidatedScoreUpdate } from '@/lib/scoreValidation';
+import { fetchScoreFromESPN } from '@/lib/espn';
 
 
 export async function POST(request: Request) {
@@ -25,6 +26,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Match with ID ${matchId} not found.` }, { status: 404 });
     }
     const match = matches[matchIdx];
+
+    // -----------------------------------------------------------------------
+    // Step 1: Try ESPN public API (fast, free, no API key required)
+    // -----------------------------------------------------------------------
+    console.log(`[Sync API] Trying ESPN for: ${match.teamA} vs ${match.teamB}`);
+    const espnScore = await fetchScoreFromESPN(match);
+
+    if (espnScore !== null) {
+      const updatedMatch = {
+        ...match,
+        scoreA: espnScore.scoreA,
+        scoreB: espnScore.scoreB,
+        winner:
+          espnScore.scoreA > espnScore.scoreB
+            ? match.teamA
+            : espnScore.scoreB > espnScore.scoreA
+            ? match.teamB
+            : null,
+        status: 'finished' as const,
+      };
+      matches[matchIdx] = updatedMatch;
+      writeMatches(matches);
+
+      const bets = readBets();
+      const { updatedBets, settledCount, changedCount } = settleAllBets(bets, matches);
+      writeBets(updatedBets);
+
+      return NextResponse.json({
+        success: true,
+        match: updatedMatch,
+        settledCount,
+        changedCount,
+        summary: `${match.teamA} ${espnScore.scoreA} - ${espnScore.scoreB} ${match.teamB}`,
+        parsedScore: `${espnScore.scoreA} - ${espnScore.scoreB}`,
+        source: 'espn',
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2: ESPN didn't have this match — fall back to LLM + search
+    // -----------------------------------------------------------------------
+    console.log(`[Sync API] ESPN miss, falling back to LLM for: ${match.teamA} vs ${match.teamB}`);
 
     const settings = readSettings();
     if (!settings.apiKey || settings.apiKey.trim() === '') {
@@ -86,7 +129,8 @@ export async function POST(request: Request) {
         settledCount,
         changedCount,
         summary: syncResult.summary,
-        parsedScore: `${syncResult.scoreA} - ${syncResult.scoreB}`
+        parsedScore: `${syncResult.scoreA} - ${syncResult.scoreB}`,
+        source: 'llm',
       });
     }
 
