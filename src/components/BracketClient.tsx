@@ -1,17 +1,16 @@
 'use client';
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Predictions, Match, Bet } from '../types';
+import { Predictions, Match } from '../types';
 import { resolveBracketMatches } from '../lib/bracketResolver';
 import BracketMatchCard from './BracketMatchCard';
-import BetDrawer from './BetDrawer';
 import { apiFetch } from '../lib/apiClient';
 import { Award, Edit3, Smartphone, Eye } from 'lucide-react';
 
 interface BracketClientProps {
   initialPredictions: Predictions;
   initialMatches: Match[];
-  initialBets: Bet[];
+  initialBets?: unknown[]; // kept for API compat but no longer used
 }
 
 const rounds = [
@@ -22,37 +21,17 @@ const rounds = [
   { id: 'final', label: '决赛 & 季军赛', startIdx: 102, count: 2 } // Final & 3rd place
 ];
 
-export default function BracketClient({ 
-  initialPredictions, 
-  initialMatches, 
-  initialBets 
+export default function BracketClient({
+  initialPredictions,
+  initialMatches,
 }: BracketClientProps) {
   const [track, setTrack] = useState<'sandbox' | 'live'>('sandbox');
   const [predictions, setPredictions] = useState<Predictions>(initialPredictions);
   const [matches] = useState<Match[]>(initialMatches);
-  const [bets, setBets] = useState<Bet[]>(initialBets);
   const [activeMobileTab, setActiveMobileTab] = useState<string>('r32');
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const reloadData = async () => {
-    try {
-      const res = await fetch('/api/bets');
-      if (res.ok) {
-        const data = await res.json();
-        setBets(data);
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  const reloadAll = () => {
-    window.location.reload();
-  };
 
   // Slices matches by round
   const roundMatchesMap = useMemo(() => {
@@ -113,14 +92,6 @@ export default function BracketClient({
     } catch (e) {
       console.error('Failed to save predicted winner:', e);
     }
-  };
-
-  const handleOpenBetSlip = (match: Match) => {
-    // To make sure we open the drawer with the original matches list containing placeholders
-    // (which we need inside the BetDrawer for resolving teams), we pass the original match
-    const original = matches.find(m => m.id === match.id) || match;
-    setSelectedMatch(original);
-    setIsDrawerOpen(true);
   };
 
   // Handle manual/drag scroll tracking (desktop only)
@@ -227,9 +198,7 @@ export default function BracketClient({
                 track={track}
                 predictions={predictions}
                 matches={matches}
-                bets={bets}
                 onSelectWinner={handleSelectWinner}
-                onOpenBetSlip={handleOpenBetSlip}
               />
             </div>
           );
@@ -243,9 +212,9 @@ export default function BracketClient({
         className="hidden lg:flex w-full overflow-x-auto select-none grab-scroll-container pb-10 space-x-8 scroll-smooth items-center snap-x snap-mandatory"
         style={{ scrollbarWidth: 'thin' }}
       >
-        
+
         {/* ROUND of 32 COLUMN */}
-        <div 
+        <div
           ref={el => { columnRefs.current['r32'] = el; }}
           className="flex flex-col justify-around h-[1600px] py-4 space-y-4 snap-start flex-shrink-0"
         >
@@ -257,9 +226,7 @@ export default function BracketClient({
               track={track}
               predictions={predictions}
               matches={matches}
-              bets={bets}
               onSelectWinner={handleSelectWinner}
-              onOpenBetSlip={handleOpenBetSlip}
             />
           ))}
         </div>
@@ -274,7 +241,7 @@ export default function BracketClient({
         </div>
 
         {/* ROUND of 16 COLUMN */}
-        <div 
+        <div
           ref={el => { columnRefs.current['r16'] = el; }}
           className="flex flex-col justify-around h-[1600px] py-4 space-y-8 snap-start flex-shrink-0"
         >
@@ -286,9 +253,7 @@ export default function BracketClient({
               track={track}
               predictions={predictions}
               matches={matches}
-              bets={bets}
               onSelectWinner={handleSelectWinner}
-              onOpenBetSlip={handleOpenBetSlip}
             />
           ))}
         </div>
@@ -303,7 +268,7 @@ export default function BracketClient({
         </div>
 
         {/* QUARTERFINALS COLUMN */}
-        <div 
+        <div
           ref={el => { columnRefs.current['qf'] = el; }}
           className="flex flex-col justify-around h-[1600px] py-4 space-y-16 snap-start flex-shrink-0"
         >
@@ -315,9 +280,7 @@ export default function BracketClient({
               track={track}
               predictions={predictions}
               matches={matches}
-              bets={bets}
               onSelectWinner={handleSelectWinner}
-              onOpenBetSlip={handleOpenBetSlip}
             />
           ))}
         </div>
@@ -332,7 +295,7 @@ export default function BracketClient({
         </div>
 
         {/* SEMIFINALS COLUMN */}
-        <div 
+        <div
           ref={el => { columnRefs.current['sf'] = el; }}
           className="flex flex-col justify-around h-[1600px] py-4 space-y-32 snap-start flex-shrink-0"
         >
@@ -344,9 +307,7 @@ export default function BracketClient({
               track={track}
               predictions={predictions}
               matches={matches}
-              bets={bets}
               onSelectWinner={handleSelectWinner}
-              onOpenBetSlip={handleOpenBetSlip}
             />
           ))}
         </div>
@@ -359,7 +320,7 @@ export default function BracketClient({
         </div>
 
         {/* FINALS COLUMN (Final and 3rd Place Match) */}
-        <div 
+        <div
           ref={el => { columnRefs.current['final'] = el; }}
           className="flex flex-col justify-around h-[1600px] py-4 space-y-32 snap-start flex-shrink-0"
         >
@@ -374,9 +335,7 @@ export default function BracketClient({
                 track={track}
                 predictions={predictions}
                 matches={matches}
-                bets={bets}
                 onSelectWinner={handleSelectWinner}
-                onOpenBetSlip={handleOpenBetSlip}
               />
             </div>
           ))}
@@ -389,17 +348,6 @@ export default function BracketClient({
         <Smartphone size={14} />
         <span>左右滑动以查看完整的淘汰赛对阵图</span>
       </div>
-
-      {/* Sliding Wager Drawer Component */}
-      <BetDrawer
-        key={selectedMatch?.id || 'empty'}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        match={selectedMatch}
-        bets={bets}
-        onBetSaved={reloadData}
-        onScoreSynced={reloadAll}
-      />
 
     </div>
   );

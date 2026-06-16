@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { matchId, betType, betSelection, odds, stake, stakeCurrency, metadata, notes, bettorId } = body;
+    const { matchId, betType, betSelection, odds, stake, stakeCurrency, metadata, notes, bettorId, legs } = body;
 
     if (!matchId || !betType || !betSelection || odds === undefined || odds === null || stake === undefined || stake === null) {
       return NextResponse.json({ error: 'Missing required betting parameters.' }, { status: 400 });
@@ -28,24 +28,22 @@ export async function POST(request: Request) {
 
     const matches = readMatches();
 
-    const match = matches.find(m => m.id === matchId);
     let initialStatus: BetStatus = 'pending';
 
-    if (match && match.status === 'finished') {
-      const settled = settleBet({
-        id: '',
-        matchId,
-        betType,
-        betSelection,
-        odds: parsedOdds,
-        stake: parsedStake,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        metadata
-      }, match);
+    // Only attempt auto-settle for single (non-parlay) bets on finished matches
+    if (matchId !== 'PARLAY') {
+      const match = matches.find(m => m.id === matchId);
+      if (match && match.status === 'finished') {
+        const settled = settleBet({
+          betType,
+          betSelection,
+          status: 'pending',
+          metadata
+        }, match);
 
-      if (settled !== 'pending') {
-        initialStatus = settled;
+        if (settled !== 'pending') {
+          initialStatus = settled;
+        }
       }
     }
 
@@ -60,6 +58,7 @@ export async function POST(request: Request) {
       status: initialStatus,
       createdAt: new Date().toISOString(),
       bettorId: bettorId || 'self',
+      ...(legs ? { legs } : {}),
       metadata: {
         ...metadata,
         notes: notes || undefined

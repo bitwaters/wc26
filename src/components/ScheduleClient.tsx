@@ -7,7 +7,8 @@ import { apiFetch } from '../lib/apiClient';
 import GroupStageClient from './GroupStageClient';
 import BracketClient from './BracketClient';
 import LiveGroupStandings from './LiveGroupStandings';
-import { BarChart2, ListTodo, Award, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import MatchScoresList from './MatchScoresList';
+import { BarChart2, ListTodo, Award, Activity, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ScheduleClientProps {
   initialPredictions: Predictions;
@@ -16,7 +17,7 @@ interface ScheduleClientProps {
   groups: Record<string, string[]>;
 }
 
-type Tab = 'standings' | 'group' | 'bracket';
+type Tab = 'standings' | 'group' | 'bracket' | 'scores';
 type SyncState = 'idle' | 'syncing' | 'done' | 'error';
 
 const SYNC_CUTOFF_MS = 90 * 60 * 1000;
@@ -121,6 +122,7 @@ export default function ScheduleClient({
 
   const tabs = [
     { id: 'standings' as Tab, label: '积分榜', icon: BarChart2 },
+    { id: 'scores' as Tab, label: '比分', icon: Activity },
     { id: 'group' as Tab, label: '小组赛预测', icon: ListTodo },
     { id: 'bracket' as Tab, label: '淘汰赛', icon: Award },
   ];
@@ -195,6 +197,10 @@ export default function ScheduleClient({
           </button>
         </div>
       </div>
+
+      {activeTab === 'scores' && (
+        <MatchScoresList matches={initialMatches} />
+      )}
 
       {activeTab === 'standings' && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

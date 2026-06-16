@@ -3,7 +3,6 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
-import { Settings } from "lucide-react";
 import ClientProviders from "@/components/ClientProviders";
 
 export const metadata: Metadata = {
@@ -27,17 +26,9 @@ export default function RootLayout({
           <span className="text-lg font-bold tracking-tight text-apple-fg">
             投注账本
           </span>
-          <div className="flex items-center space-x-3">
-            <span className="text-[11px] font-semibold tracking-wider text-apple-secondary-fg bg-apple-secondary-bg px-2.5 py-0.5 rounded-[4px] border border-apple-border/20">
-              WC 2026
-            </span>
-            <Link
-              href="/settings"
-              className="p-1.5 rounded-full text-apple-secondary-fg hover:text-apple-fg hover:bg-apple-secondary-bg transition-colors"
-            >
-              <Settings size={18} />
-            </Link>
-          </div>
+          <span className="text-[11px] font-semibold tracking-wider text-apple-secondary-fg bg-apple-secondary-bg px-2.5 py-0.5 rounded-[4px] border border-apple-border/20">
+            WC 2026
+          </span>
         </header>
 
         {/* Main Content Area */}

@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BookOpen, CalendarDays, Receipt } from 'lucide-react';
+import { Target, CalendarDays, Receipt, Sliders } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: '看板', icon: LayoutDashboard },
-  { href: '/ledger-entry', label: '记账', icon: BookOpen },
+  { href: '/', label: '账本', icon: Receipt },
+  { href: '/betting', label: '投注台', icon: Target },
   { href: '/schedule', label: '赛程', icon: CalendarDays },
-  { href: '/ledger', label: '账本', icon: Receipt },
+  { href: '/settings', label: '设置', icon: Sliders },
 ];
 
 export default function BottomNav() {

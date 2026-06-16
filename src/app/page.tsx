@@ -1,5 +1,5 @@
 import { readBets, readMatches, readPlayers } from '@/lib/storage';
-import DashboardClient from '@/components/DashboardClient';
+import LedgerDashboardClient from '@/components/LedgerDashboardClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +9,6 @@ export default function Home() {
   const players = readPlayers();
 
   return (
-    <DashboardClient initialBets={bets} initialMatches={matches} initialPlayers={players} />
+    <LedgerDashboardClient initialBets={bets} initialMatches={matches} initialPlayers={players} />
   );
 }

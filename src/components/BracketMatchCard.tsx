@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Match, Predictions, Bet } from '../types';
+import { Match, Predictions } from '../types';
 import Flag from './Flag';
 import { resolveTeamName } from '../lib/bracketResolver';
 import { getMatchWinner } from '../lib/matchResult';
-import { Check, Ticket } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { teamZhName } from '../lib/teamNames';
 
 interface BracketMatchCardProps {
@@ -14,9 +14,7 @@ interface BracketMatchCardProps {
   track: 'sandbox' | 'live';
   predictions: Predictions;
   matches: Match[];
-  bets: Bet[];
   onSelectWinner?: (matchId: string, teamName: string) => void;
-  onOpenBetSlip: (match: Match) => void;
 }
 
 export default function BracketMatchCard({
@@ -25,12 +23,9 @@ export default function BracketMatchCard({
   track,
   predictions,
   matches,
-  bets,
   onSelectWinner,
-  onOpenBetSlip
 }: BracketMatchCardProps) {
   const predictedWinner = predictions.bracket[match.id];
-  const matchBets = bets.filter(b => b.matchId === match.id);
   const isFinished = match.status === 'finished' && match.scoreA !== null && match.scoreB !== null;
   const actualWinner = isFinished ? getMatchWinner(match, match.teamA, match.teamB) : null;
   const teamAWon = isFinished && actualWinner === match.teamA;
@@ -89,27 +84,6 @@ export default function BracketMatchCard({
   return (
     <div className={`relative bg-apple-card-bg border rounded-apple-lg p-3 w-full lg:w-[220px] shadow-sm flex flex-col group transition-all duration-300 ${borderClass}`}>
       
-      {/* Small floating action buttons on card */}
-      <div className="absolute right-2 top-2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-        <button
-          onClick={() => onOpenBetSlip(match)}
-          className="p-1 rounded-full bg-apple-secondary-bg hover:bg-apple-border/40 text-apple-secondary-fg hover:text-apple-fg transition-colors"
-          title="管理该场注单"
-        >
-          <Ticket size={11} />
-        </button>
-      </div>
-
-      {/* Flag badge for active bets */}
-      {matchBets.length > 0 && (
-        <div 
-          onClick={() => onOpenBetSlip(match)}
-          className="absolute -left-2 -top-1.5 bg-apple-accent text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm cursor-pointer z-10 transform -rotate-6 select-none"
-        >
-          {matchBets.length}
-        </div>
-      )}
-
       {/* Match Meta */}
       <div className="text-[9px] text-apple-secondary-fg font-semibold tracking-wide uppercase mb-2">
         {match.id.replace('match_', '场次 ')}
